@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ShotWithGeneration } from "@/lib/types";
 import { CommentDrawer } from "./CommentDrawer";
+import { ImageLightbox } from "./ImageLightbox";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Черновик",
@@ -40,6 +41,7 @@ export function ShotCard({
   const [generating, setGenerating] = useState(false);
   const [showVO, setShowVO] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   async function handleGenerate() {
     setGenerating(true);
@@ -59,7 +61,12 @@ export function ShotCard({
         <div className="aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center">
           {imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt={`Кадр ${index + 1}`} className="w-full h-full object-cover" />
+            <img
+              src={imageUrl}
+              alt={`Кадр ${index + 1}`}
+              onClick={() => setLightboxOpen(true)}
+              className="w-full h-full object-cover cursor-zoom-in"
+            />
           ) : (
             <span className="text-neutral-600 text-xs">
               {generating || shot.status === "generating" ? "Генерируется…" : "Нет изображения"}
@@ -70,6 +77,9 @@ export function ShotCard({
           {String(index + 1).padStart(2, "0")}
         </span>
       </div>
+      {lightboxOpen && imageUrl && (
+        <ImageLightbox src={imageUrl} alt={`Кадр ${index + 1}`} onClose={() => setLightboxOpen(false)} />
+      )}
 
       {/* Right: editorial detail */}
       <div className="flex-1 min-w-0 flex flex-col gap-3 text-neutral-200">

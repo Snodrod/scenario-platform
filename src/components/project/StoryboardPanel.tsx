@@ -125,12 +125,23 @@ export function StoryboardPanel({
     );
   }
 
+  const sortedScenes = [...scenes].sort((a, b) => a.order_index - b.order_index);
+
+  // Number shots continuously across the whole storyboard (matching how
+  // imported source documents — and most real shot lists — number them),
+  // not reset back to 1 at the start of every scene.
+  const globalIndexByShotId = new Map<string, number>();
+  let runningIndex = 0;
+  for (const scene of sortedScenes) {
+    for (const shot of [...scene.shots].sort((a, b) => a.order_index - b.order_index)) {
+      globalIndexByShotId.set(shot.id, runningIndex++);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-8">
       {canEdit && <RevisionsImport projectId={projectId} textProviders={textProviders} />}
-      {scenes
-        .sort((a, b) => a.order_index - b.order_index)
-        .map((scene, sceneIdx) => (
+      {sortedScenes.map((scene, sceneIdx) => (
           <div key={scene.id}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-neutral-300">
@@ -151,11 +162,11 @@ export function StoryboardPanel({
             <div className="flex flex-col gap-4">
               {scene.shots
                 .sort((a, b) => a.order_index - b.order_index)
-                .map((shot, shotIdx) => (
+                .map((shot) => (
                   <ShotCard
                     key={shot.id}
                     shot={shot}
-                    index={shotIdx}
+                    index={globalIndexByShotId.get(shot.id) ?? 0}
                     canEdit={canEdit}
                     onUpdate={(patch) => updateShot(scene.id, shot.id, patch)}
                     onDelete={() => deleteShot(scene.id, shot.id)}

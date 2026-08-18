@@ -3,6 +3,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { createElement } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { StoryboardDocument, type PdfScene } from "@/lib/pdf/StoryboardDocument";
+import { mapWithConcurrency } from "@/lib/text-extract";
 
 export const maxDuration = 60;
 
@@ -41,6 +42,32 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/projects/[i
       })),
   }));
 
+  // @react-pdf/renderer fetches each <Image src={url}> itself at render
+  // time, one request at a time internally — with dozens of shots that
+  // serialized fetch chain is what took 117s (and counting) on a real
+  // 87-shot storyboard. Prefetching concurrently into data URIs first
+  // means renderToBuffer does zero network I/O of its own.
+  const allShots = pdfScenes.flatMap((s) => s.shots);
+  const dataUriByUrl = new Map<string, string>();
+  await mapWithConcurrency(
+    allShots.filter((s) => s.imageUrl),
+    6,
+    async (shot) => {
+      try {
+        const res = await fetch(shot.imageUrl!);
+        if (!res.ok) return;
+        const bytes = Buffer.from(await res.arrayBuffer());
+        const mimeType = res.headers.get("content-type") || "image/png";
+        dataUriByUrl.set(shot.imageUrl!, `data:${mimeType};base64,${bytes.toString("base64")}`);
+      } catch {
+        // Missing image just renders as a placeholder in the PDF.
+      }
+    }
+  );
+  for (const shot of allShots) {
+    if (shot.imageUrl) shot.imageUrl = dataUriByUrl.get(shot.imageUrl) ?? null;
+  }
+
   // @react-pdf/renderer types its input as a <Document> element specifically;
   // StoryboardDocument returns one at runtime, so the cast is safe.
   const buffer = await renderToBuffer(
@@ -54,10 +81,17 @@ export async function GET(_request: Request, ctx: RouteContext<"/api/projects/[i
   const { data: publicUrl } = supabase.storage.from("assets").getPublicUrl(path);
   await supabase.from("exports").insert({ project_id: projectId, type: "pdf", url: publicUrl.publicUrl, created_by: user.id });
 
+  // Content-Disposition filenames are restricted to Latin-1 bytes — a
+  // Cyrillic (or any non-ASCII) project name broke this outright before.
+  // ASCII fallback (filename=) for old clients + RFC 5987 UTF-8 form
+  // (filename*=) for everything else.
+  const asciiName = project.name.replace(/[^\x20-\x7E]/g, "_") || "storyboard";
+  const encodedName = encodeURIComponent(`${project.name}-storyboard.pdf`);
+
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${project.name}-storyboard.pdf"`,
+      "Content-Disposition": `attachment; filename="${asciiName}-storyboard.pdf"; filename*=UTF-8''${encodedName}`,
     },
   });
 }
