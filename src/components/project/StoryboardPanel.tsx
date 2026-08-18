@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { SceneWithShots } from "@/lib/types";
 import { ShotCard } from "./ShotCard";
+import { RevisionsImport } from "./RevisionsImport";
 
 export function StoryboardPanel({
   projectId,
@@ -119,6 +120,7 @@ export function StoryboardPanel({
 
   return (
     <div className="flex flex-col gap-8">
+      {canEdit && <RevisionsImport projectId={projectId} />}
       {scenes
         .sort((a, b) => a.order_index - b.order_index)
         .map((scene, sceneIdx) => (

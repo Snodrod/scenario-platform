@@ -28,6 +28,7 @@ export function ProjectWorkspace({
   role,
   driveConfigured,
   driveConnected,
+  notionConfigured,
 }: {
   project: ProjectRow;
   script: ScriptRow;
@@ -38,6 +39,7 @@ export function ProjectWorkspace({
   role: MemberRole;
   driveConfigured: boolean;
   driveConnected: boolean;
+  notionConfigured: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("script");
   const canEdit = role === "owner" || role === "co_writer";
@@ -80,6 +82,7 @@ export function ProjectWorkspace({
           hasScenes={scenes.length > 0}
           driveConfigured={driveConfigured}
           driveConnected={driveConnected}
+          notionConfigured={notionConfigured}
         />
       )}
       {tab === "storyboard" && (

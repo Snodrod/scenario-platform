@@ -5,6 +5,7 @@ import { ProjectWorkspace } from "@/components/project/ProjectWorkspace";
 import type { SceneWithShots } from "@/lib/types";
 import { resolveProjectRole } from "@/lib/project-access";
 import { isGoogleDriveConfigured } from "@/lib/google/oauth";
+import { isNotionConfigured } from "@/lib/text-extract";
 
 export default async function ProjectPage(props: PageProps<"/project/[id]">) {
   const { id } = await props.params;
@@ -81,6 +82,7 @@ export default async function ProjectPage(props: PageProps<"/project/[id]">) {
         role={role}
         driveConfigured={isGoogleDriveConfigured()}
         driveConnected={driveConnected}
+        notionConfigured={isNotionConfigured()}
       />
     </>
   );

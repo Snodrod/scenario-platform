@@ -12,6 +12,7 @@ export function ScriptPanel({
   hasScenes,
   driveConfigured,
   driveConnected,
+  notionConfigured,
 }: {
   scriptId: string;
   projectId: string;
@@ -20,6 +21,7 @@ export function ScriptPanel({
   hasScenes: boolean;
   driveConfigured: boolean;
   driveConnected: boolean;
+  notionConfigured: boolean;
 }) {
   const router = useRouter();
   const [content, setContent] = useState(initialContent);
@@ -81,6 +83,7 @@ export function ScriptPanel({
           projectId={projectId}
           driveConfigured={driveConfigured}
           driveConnected={driveConnected}
+          notionConfigured={notionConfigured}
           onImport={handleImport}
         />
       )}

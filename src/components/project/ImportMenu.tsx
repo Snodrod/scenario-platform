@@ -3,17 +3,19 @@
 import { useState } from "react";
 
 type DriveFile = { id: string; name: string; mimeType: string; modifiedTime?: string };
-type Tab = "file" | "gdoc" | "drive";
+type Tab = "file" | "gdoc" | "notion" | "drive";
 
 export function ImportMenu({
   projectId,
   driveConfigured,
   driveConnected,
+  notionConfigured,
   onImport,
 }: {
   projectId: string;
   driveConfigured: boolean;
   driveConnected: boolean;
+  notionConfigured: boolean;
   onImport: (text: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -21,6 +23,7 @@ export function ImportMenu({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gdocUrl, setGdocUrl] = useState("");
+  const [notionUrl, setNotionUrl] = useState("");
   const [driveFiles, setDriveFiles] = useState<DriveFile[] | null>(null);
 
   function handleResult(text: string) {
@@ -51,6 +54,21 @@ export function ImportMenu({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: gdocUrl }),
+    });
+    const json = await res.json();
+    setBusy(false);
+    if (!res.ok) return setError(json.error);
+    handleResult(json.text);
+  }
+
+  async function handleNotion(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    const res = await fetch("/api/import/notion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: notionUrl }),
     });
     const json = await res.json();
     setBusy(false);
@@ -108,6 +126,7 @@ export function ImportMenu({
         {([
           ["file", "Файл (PDF/DOCX)"],
           ["gdoc", "Ссылка на Google Doc"],
+          ["notion", "Notion"],
           ["drive", "Google Drive"],
         ] as [Tab, string][]).map(([t, label]) => (
           <button
@@ -155,6 +174,36 @@ export function ImportMenu({
             {busy ? "Загружаем…" : "Импортировать"}
           </button>
         </form>
+      )}
+
+      {tab === "notion" && (
+        <div>
+          {!notionConfigured ? (
+            <p className="text-xs text-neutral-500">
+              Notion import ещё не настроен на сервере — нужен NOTION_API_KEY (см. README).
+            </p>
+          ) : (
+            <form onSubmit={handleNotion} className="flex flex-col gap-2">
+              <input
+                required
+                placeholder="https://your-workspace.notion.site/..."
+                value={notionUrl}
+                onChange={(e) => setNotionUrl(e.target.value)}
+                className="rounded bg-neutral-800 border border-neutral-700 px-2 py-1.5 text-sm text-neutral-100"
+              />
+              <p className="text-xs text-neutral-500">
+                Страница должна быть расшарена с вашей Notion-интеграцией («...» → Connections).
+              </p>
+              <button
+                type="submit"
+                disabled={busy}
+                className="self-start rounded bg-white text-neutral-900 text-sm font-medium px-4 py-1.5 disabled:opacity-50"
+              >
+                {busy ? "Загружаем…" : "Импортировать"}
+              </button>
+            </form>
+          )}
+        </div>
       )}
 
       {tab === "drive" && (
