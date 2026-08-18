@@ -65,7 +65,10 @@ async function generateJSONWithGemini(systemPrompt: string, userPrompt: string, 
   if (!apiKey) throw new Error("GOOGLE_API_KEY is not set — add it to .env.local");
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const modelName = process.env.GOOGLE_TEXT_MODEL || "gemini-2.5-flash";
+  // gemini-2.5-flash 404s for new API keys now ("no longer available to
+  // new users" per the live API) — verified gemini-3.6-flash works on
+  // the free tier with a real key before defaulting to it here.
+  const modelName = process.env.GOOGLE_TEXT_MODEL || "gemini-3.6-flash";
   const model = genAI.getGenerativeModel({
     model: modelName,
     systemInstruction: systemPrompt,

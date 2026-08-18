@@ -21,7 +21,12 @@ export const geminiImageProvider: ImageProvider = {
     if (!apiKey) throw new Error("GOOGLE_API_KEY is not set — add it to .env.local");
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const modelName = process.env.GOOGLE_IMAGE_MODEL || "gemini-2.5-flash-image";
+    // Image-generation models currently have a 0 request/day free-tier
+    // quota (confirmed against the live API) — this call needs billing
+    // enabled on the Google Cloud project behind GOOGLE_API_KEY, even
+    // though Gemini's text models (used for breakdown/revisions) work
+    // fine on the free tier with the same key.
+    const modelName = process.env.GOOGLE_IMAGE_MODEL || "gemini-3.1-flash-image";
     const model = genAI.getGenerativeModel({ model: modelName });
 
     const referenceParts = await Promise.all(
