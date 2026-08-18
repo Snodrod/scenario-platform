@@ -8,7 +8,7 @@ export const openaiImageProvider: ImageProvider = {
   id: "openai",
   label: "OpenAI (GPT Image)",
 
-  async generate({ prompt, referenceImageUrls, aspectRatio }) {
+  async generate({ prompt, referenceImageUrls, aspectRatio, quality }) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OPENAI_API_KEY is not set — add it to .env.local");
 
@@ -24,6 +24,7 @@ export const openaiImageProvider: ImageProvider = {
       model,
       prompt: fullPrompt,
       size,
+      quality: quality ?? "medium", // real gpt-image-1 param — higher quality costs more per image
       n: 1,
     });
 

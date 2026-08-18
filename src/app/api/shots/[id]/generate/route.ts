@@ -16,6 +16,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/shots/[id]/
   const providerId =
     body?.provider === "gemini" || body?.provider === "pollinations" ? body.provider : "pollinations";
   const aspectRatio = body?.aspectRatio ?? undefined;
+  const quality = ["low", "medium", "high"].includes(body?.quality) ? body.quality : undefined;
   const overridePrompt = typeof body?.prompt === "string" ? body.prompt : undefined;
 
   const { data: shot, error: shotError } = await supabase
@@ -68,7 +69,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/shots/[id]/
 
   try {
     const provider = getImageProvider(providerId);
-    const output = await provider.generate({ prompt, referenceImageUrls, aspectRatio });
+    const output = await provider.generate({ prompt, referenceImageUrls, aspectRatio, quality });
 
     const ext = output.mimeType.includes("png") ? "png" : "jpg";
     const path = `shots/${projectId}/${shotId}-${generation.id}.${ext}`;

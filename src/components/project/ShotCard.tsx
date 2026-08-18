@@ -34,10 +34,17 @@ export function ShotCard({
   canEdit: boolean;
   onUpdate: (patch: Record<string, unknown>) => void;
   onDelete: () => void;
-  onGenerate: (opts: { provider: "openai" | "gemini" | "pollinations"; prompt?: string }) => Promise<void>;
+  onGenerate: (opts: {
+    provider: "openai" | "gemini" | "pollinations";
+    prompt?: string;
+    aspectRatio: "16:9" | "9:16" | "1:1" | "4:5";
+    quality: "low" | "medium" | "high";
+  }) => Promise<void>;
 }) {
   const [customPrompt, setCustomPrompt] = useState(shot.prompt);
   const [provider, setProvider] = useState<"openai" | "gemini" | "pollinations">("pollinations");
+  const [aspectRatio, setAspectRatio] = useState<"16:9" | "9:16" | "1:1" | "4:5">("16:9");
+  const [quality, setQuality] = useState<"low" | "medium" | "high">("medium");
   const [generating, setGenerating] = useState(false);
   const [showVO, setShowVO] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -46,7 +53,12 @@ export function ShotCard({
   async function handleGenerate() {
     setGenerating(true);
     try {
-      await onGenerate({ provider, prompt: customPrompt !== shot.prompt ? customPrompt : undefined });
+      await onGenerate({
+        provider,
+        prompt: customPrompt !== shot.prompt ? customPrompt : undefined,
+        aspectRatio,
+        quality,
+      });
     } finally {
       setGenerating(false);
     }
@@ -185,6 +197,28 @@ export function ShotCard({
                 <option value="pollinations">Pollinations.ai (бесплатно)</option>
                 <option value="openai">OpenAI (GPT Image)</option>
                 <option value="gemini">Google (Nano Banana)</option>
+              </select>
+              <select
+                value={aspectRatio}
+                onChange={(e) => setAspectRatio(e.target.value as typeof aspectRatio)}
+                title="Соотношение сторон"
+                className="rounded bg-neutral-800 border border-neutral-700 px-2 py-1 text-xs"
+              >
+                <option value="16:9">16:9 (широкий)</option>
+                <option value="9:16">9:16 (вертикальный)</option>
+                <option value="1:1">1:1 (квадрат)</option>
+                <option value="4:5">4:5 (портрет)</option>
+              </select>
+              <select
+                value={quality}
+                onChange={(e) => setQuality(e.target.value as typeof quality)}
+                title={provider === "gemini" ? "Не поддерживается Nano Banana" : "Качество / разрешение"}
+                disabled={provider === "gemini"}
+                className="rounded bg-neutral-800 border border-neutral-700 px-2 py-1 text-xs disabled:opacity-40"
+              >
+                <option value="low">Низкое (быстрее)</option>
+                <option value="medium">Среднее</option>
+                <option value="high">Высокое</option>
               </select>
               <button
                 onClick={() => {

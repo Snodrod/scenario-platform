@@ -26,11 +26,19 @@ export interface BreakdownResult {
   scenes: SceneDraft[];
 }
 
+export type ImageQuality = "low" | "medium" | "high";
+
 export interface ImageGenerationInput {
   prompt: string;
   /** Public URLs of character reference images to keep the look consistent. */
   referenceImageUrls?: string[];
   aspectRatio?: "16:9" | "9:16" | "1:1" | "4:5";
+  /**
+   * Not every provider has a real quality knob — Pollinations maps this to
+   * resolution, OpenAI passes it straight through to gpt-image-1's own
+   * `quality` param, Gemini currently ignores it (no equivalent control).
+   */
+  quality?: ImageQuality;
 }
 
 export interface ImageGenerationOutput {

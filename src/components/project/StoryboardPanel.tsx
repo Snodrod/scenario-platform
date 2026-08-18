@@ -54,7 +54,12 @@ export function StoryboardPanel({
   async function generateShot(
     sceneId: string,
     shotId: string,
-    opts: { provider: "openai" | "gemini" | "pollinations"; prompt?: string }
+    opts: {
+      provider: "openai" | "gemini" | "pollinations";
+      prompt?: string;
+      aspectRatio: "16:9" | "9:16" | "1:1" | "4:5";
+      quality: "low" | "medium" | "high";
+    }
   ) {
     const { ok, data, error } = await fetchJson<{ generation: GenerationRow }>(`/api/shots/${shotId}/generate`, {
       method: "POST",

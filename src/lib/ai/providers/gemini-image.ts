@@ -16,6 +16,10 @@ export const geminiImageProvider: ImageProvider = {
   id: "gemini",
   label: "Google (Nano Banana)",
 
+  // `quality` isn't accepted — checked the installed SDK's types, no
+  // imageConfig/quality knob exposed for image generation. aspectRatio
+  // stays a prompt-text hint rather than a structural param for the same
+  // reason (unverified whether the raw API honors an untyped field).
   async generate({ prompt, referenceImageUrls, aspectRatio }) {
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) throw new Error("GOOGLE_API_KEY is not set — add it to .env.local");
