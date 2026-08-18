@@ -87,22 +87,22 @@ export function StoryboardDocument({ projectName, scenes }: PdfProps) {
                   </Text>
                   {shot.lineText ? <Text style={styles.shotLine}>«{shot.lineText}»</Text> : null}
                   {shot.emotionNotes ? (
-                    <>
+                    <View>
                       <Text style={styles.shotLabel}>ЭМОЦИЯ И ПОДАЧА</Text>
                       <Text style={styles.shotText}>{shot.emotionNotes}</Text>
-                    </>
+                    </View>
                   ) : null}
                   {shot.editingNotes ? (
-                    <>
+                    <View>
                       <Text style={styles.shotLabel}>ТЗ К МОНТАЖУ</Text>
                       <Text style={styles.shotText}>{shot.editingNotes}</Text>
-                    </>
+                    </View>
                   ) : null}
                   {shot.soundNotes ? (
-                    <>
+                    <View>
                       <Text style={styles.shotLabel}>ЗВУК</Text>
                       <Text style={styles.shotText}>{shot.soundNotes}</Text>
-                    </>
+                    </View>
                   ) : null}
                 </View>
               </View>
