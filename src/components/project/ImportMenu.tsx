@@ -10,13 +10,17 @@ export function ImportMenu({
   driveConfigured,
   driveConnected,
   notionConfigured,
+  hasScenes,
   onImport,
+  onStructuredImport,
 }: {
   projectId: string;
   driveConfigured: boolean;
   driveConnected: boolean;
   notionConfigured: boolean;
+  hasScenes: boolean;
   onImport: (text: string) => void;
+  onStructuredImport: (summary: { sceneCount: number; shotCount: number; imagesImported: number }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("file");
@@ -83,6 +87,38 @@ export function ImportMenu({
 
   async function handleNotion(e: React.FormEvent) {
     e.preventDefault();
+
+    if (hasScenes) {
+      const ok = window.confirm(
+        "Если в этой Notion-странице уже есть готовая раскадровка, импорт заменит текущие сцены и кадры (сгенерированные изображения и комментарии к ним будут удалены). Продолжить?"
+      );
+      if (!ok) return;
+    }
+
+    // Try the structured path first — some Notion pages already have a
+    // full storyboard (images, timecodes, per-shot fields) built in, in
+    // which case we skip straight to scenes/shots instead of just text.
+    const structured = await safeRequest(() =>
+      fetch(`/api/projects/${projectId}/import/notion-storyboard`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: notionUrl }),
+      })
+    );
+    if (structured === null) return; // safeRequest already surfaced the error
+    const structuredResult = structured as { structured: boolean; sceneCount?: number; shotCount?: number; imagesImported?: number };
+    if (structuredResult.structured) {
+      onStructuredImport({
+        sceneCount: structuredResult.sceneCount ?? 0,
+        shotCount: structuredResult.shotCount ?? 0,
+        imagesImported: structuredResult.imagesImported ?? 0,
+      });
+      setOpen(false);
+      setError(null);
+      return;
+    }
+
+    // Not a pre-built storyboard — fall back to plain text import.
     const json = await safeRequest(() =>
       fetch("/api/import/notion", {
         method: "POST",

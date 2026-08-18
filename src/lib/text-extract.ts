@@ -84,11 +84,12 @@ function toDashedUuid(hex32: string): string {
   return `${hex32.slice(0, 8)}-${hex32.slice(8, 12)}-${hex32.slice(12, 16)}-${hex32.slice(16, 20)}-${hex32.slice(20)}`;
 }
 
-interface NotionRichText {
+export interface NotionRichText {
   plain_text: string;
+  annotations?: { bold?: boolean };
 }
 
-interface NotionBlock {
+export interface NotionBlock {
   id: string;
   type: string;
   has_children: boolean;
@@ -101,7 +102,7 @@ interface NotionBlockChildrenResponse {
   next_cursor?: string;
 }
 
-async function notionApi(path: string, attempt = 0): Promise<NotionBlockChildrenResponse> {
+export async function notionApi(path: string, attempt = 0): Promise<NotionBlockChildrenResponse> {
   const apiKey = process.env.NOTION_API_KEY;
   if (!apiKey) throw new Error("NOTION_API_KEY is not set — add it to .env.local");
 
@@ -128,7 +129,7 @@ async function notionApi(path: string, attempt = 0): Promise<NotionBlockChildren
 // Runs `fn` over `items` with at most `limit` in flight at once — fast
 // (unlike full sequential recursion, which took minutes on a real page),
 // but still under Notion's ~3 req/s rate limit.
-async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+export async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let next = 0;
   async function worker() {
@@ -196,6 +197,28 @@ async function fetchBlockChildrenRecursive(blockId: string, depth = 0): Promise<
     lines.push(...childResults[i].map((l) => `  ${l}`));
   });
   return lines;
+}
+
+// Plain concatenated text of a block's own rich_text (no markdown prefix,
+// unlike blockToText) — used by the structured-storyboard parser.
+export function getBlockPlainText(block: NotionBlock): string {
+  const data = block[block.type] as { rich_text?: NotionRichText[] } | undefined;
+  return (data?.rich_text ?? []).map((t) => t.plain_text).join("");
+}
+
+// Fetches one block's direct children in document order (paginated, not
+// recursive) — the structured-storyboard parser needs the flat top-level
+// sequence to detect heading boundaries, not a fully flattened text dump.
+export async function fetchAllChildren(blockId: string): Promise<NotionBlock[]> {
+  const blocks: NotionBlock[] = [];
+  let cursor: string | undefined;
+  do {
+    const query = cursor ? `?start_cursor=${cursor}&page_size=100` : "?page_size=100";
+    const data = await notionApi(`/v1/blocks/${blockId}/children${query}`);
+    blocks.push(...(data.results ?? []));
+    cursor = data.has_more ? data.next_cursor : undefined;
+  } while (cursor);
+  return blocks;
 }
 
 export async function fetchNotionPageText(urlOrId: string): Promise<string> {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ProjectRow, ScriptRow, SceneWithShots, CharacterRow } from "@/lib/types";
 import type { MemberRole } from "@/lib/supabase/types";
 import { ScriptPanel } from "./ScriptPanel";
@@ -45,6 +46,7 @@ export function ProjectWorkspace({
   textProviders: TextProviderId[];
 }) {
   const [tab, setTab] = useState<Tab>("script");
+  const router = useRouter();
   const canEdit = role === "owner" || role === "co_writer";
   const isOwnerOrWriter = canEdit;
 
@@ -92,6 +94,10 @@ export function ProjectWorkspace({
           driveConnected={driveConnected}
           notionConfigured={notionConfigured}
           textProviders={textProviders}
+          onStoryboardImported={() => {
+            router.refresh();
+            setTab("storyboard");
+          }}
         />
       </div>
       <div className={tab === "storyboard" ? "" : "hidden"}>

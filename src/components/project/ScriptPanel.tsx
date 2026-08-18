@@ -15,6 +15,7 @@ export function ScriptPanel({
   driveConnected,
   notionConfigured,
   textProviders,
+  onStoryboardImported,
 }: {
   scriptId: string;
   projectId: string;
@@ -25,6 +26,7 @@ export function ScriptPanel({
   driveConnected: boolean;
   notionConfigured: boolean;
   textProviders: TextProviderId[];
+  onStoryboardImported: () => void;
 }) {
   const router = useRouter();
   const [content, setContent] = useState(initialContent);
@@ -32,6 +34,7 @@ export function ScriptPanel({
   const [breaking, setBreaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [importResult, setImportResult] = useState<string | null>(null);
   const [provider, setProvider] = useState<TextProviderId | undefined>(textProviders[0]);
 
   async function save() {
@@ -84,6 +87,13 @@ export function ScriptPanel({
     setError(null);
   }
 
+  function handleStructuredImport(summary: { sceneCount: number; shotCount: number; imagesImported: number }) {
+    setImportResult(
+      `Найдена готовая раскадровка — импортировано ${summary.sceneCount} сцен, ${summary.shotCount} кадров, ${summary.imagesImported} изображений. Открываю «Раскадровку».`
+    );
+    onStoryboardImported();
+  }
+
   return (
     <div className="flex flex-col gap-3">
       {canEdit && (
@@ -92,9 +102,12 @@ export function ScriptPanel({
           driveConfigured={driveConfigured}
           driveConnected={driveConnected}
           notionConfigured={notionConfigured}
+          hasScenes={hasScenes}
           onImport={handleImport}
+          onStructuredImport={handleStructuredImport}
         />
       )}
+      {importResult && <p className="text-sm text-emerald-400">{importResult}</p>}
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
