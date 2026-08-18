@@ -13,6 +13,10 @@ Phase 1 MVP: авторизация, проекты, редактор сцена
 3. Скопируйте содержимое [`supabase/schema.sql`](supabase/schema.sql) целиком, вставьте и выполните (Run).
    Это создаёт все таблицы, RLS-политики и bucket для файлов (`assets`).
 4. В **Authentication → Providers** включите **Email** (magic link уже включён по умолчанию).
+   Дополнительно рекомендуется включить **Google** — вход через Google не зависит от
+   email-рассылки Supabase вообще (см. «Вход и приглашения» ниже) и полностью снимает
+   упирание в дефолтный rate limit `over_email_send_rate_limit`, с которым сталкивались
+   при активном тестировании.
 5. В **Authentication → URL Configuration** добавьте:
    - Site URL: `http://localhost:3000` (потом замените на прод-домен)
    - Redirect URLs: `http://localhost:3000/auth/callback`, и то же самое для прод-домена.
@@ -95,6 +99,40 @@ Serverless-функции на Vercel Hobby ограничены 10 секунд
 - **Роль client** может: смотреть сценарий и раскадровку, комментировать, генерировать
   собственный вариант кадра. Не может: менять сценарий, утверждать кадры, приглашать людей.
 - **Экспорт в PDF** собирает финальные изображения + монтажные заметки в один файл.
+
+## Вход и приглашения
+
+Изначально был только magic link по email — но дефолтный email-релей Supabase лимитирован
+до нескольких писем в час, и это лимитирует не только приглашения, а вообще любой вход, включая
+повторный вход владельца проекта. Решение — **вход через Google**, который вообще не использует
+email-рассылку:
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → OAuth consent screen (если ещё
+   не создан для Drive-импорта — см. ниже, можно переиспользовать тот же проект/клиент).
+2. **APIs & Services → Credentials → Create credentials → OAuth client ID**, тип **Web
+   application**. Authorized redirect URI: `{SUPABASE_PROJECT_URL}/auth/v1/callback`
+   (например `https://hxwkebfpxhqcjohfravt.supabase.co/auth/v1/callback` — **не** URL самого
+   приложения, это отдельный callback, которым управляет сам Supabase).
+3. Supabase Dashboard → **Authentication → Providers → Google** → вставьте Client ID/Secret,
+   включите провайдер.
+4. На странице логина появится кнопка «Войти через Google» — работает сразу, без переменных
+   окружения в `.env.local` (креды хранятся в Supabase, не в коде).
+
+Приглашение участников (`POST /api/projects/[id]/invite`) тоже переделано так, чтобы не зависеть
+от email-рассылки: вместо `admin.inviteUserByEmail` (шлёт письмо через тот же лимитированный
+Supabase-мейлер) используется `admin.createUser` — аккаунт создаётся тихо, без письма, и участник
+сразу добавляется в проект. Владелец/соавтор сам делится ссылкой на проект (кнопка «Добавить»
+копирует её в буфер обмена) — приглашённый заходит по этой ссылке и жмёт «Войти через Google»
+тем же email-адресом. Magic link по email остаётся рабочим запасным вариантом для тех, у кого
+нет Google-аккаунта, но по-прежнему зависит от того, настроен ли кастомный SMTP (см. ниже).
+
+**Кастомный SMTP** (опционально, снимает лимит и для magic link/старого flow): Supabase →
+Authentication → Emails → SMTP Settings → Enable Custom SMTP. Рекомендован
+[Resend](https://resend.com) — Host `smtp.resend.com`, порт `465`/`587`, Username `resend`,
+Password — API-ключ Resend. Требует верифицированного домена в Resend (DNS-записи SPF/DKIM).
+Проверить, что реально работает — в Supabase → Logs → Auth Logs, поле `mail_from` в событиях
+`mail.send` должно быть вашим адресом, а не `noreply@mail.app.supabase.io` (последнее значит,
+что письма всё ещё идут через дефолтный релей, даже если настройки выглядят сохранёнными).
 
 ## Импорт сценария
 

@@ -48,22 +48,26 @@ export function TeamPanel({
       setMessage(`Ошибка: ${error}`);
       return;
     }
-    setMessage(`Приглашение отправлено на ${email}`);
+    await copyProjectLink();
+    setMessage(`Добавлен(а): ${email}. Ссылка на проект скопирована — отправьте её сами (мессенджер, почта и т.п.), вход через Google по этому же адресу.`);
     setEmail("");
     router.refresh();
   }
 
-  async function handleResend(member: MemberWithEmail) {
-    if (!member.email) return;
+  async function copyProjectLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+    } catch {
+      // Clipboard API can fail (no permission, non-secure context) —
+      // non-fatal, the link is still visible in the address bar.
+    }
+  }
+
+  async function handleCopyLink(member: MemberWithEmail) {
     setBusyMemberId(member.user_id);
-    setMessage(null);
-    const { ok, error } = await fetchJson(`/api/projects/${projectId}/invite`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: member.email, role: member.role, resend: true }),
-    });
+    await copyProjectLink();
     setBusyMemberId(null);
-    setMessage(ok ? `Приглашение отправлено повторно на ${member.email}` : `Ошибка: ${error}`);
+    setMessage(`Ссылка на проект скопирована — отправьте её ${member.email ?? "участнику"} сами.`);
   }
 
   async function handleRemove(member: MemberWithEmail) {
@@ -96,12 +100,12 @@ export function TeamPanel({
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-neutral-500">{ROLE_LABEL[m.role]}</span>
                 <button
-                  onClick={() => handleResend(m)}
+                  onClick={() => handleCopyLink(m)}
                   disabled={busyMemberId === m.user_id}
                   className="text-xs text-neutral-400 hover:text-neutral-200 disabled:opacity-50"
-                  title="Отправить приглашение заново"
+                  title="Скопировать ссылку на проект, чтобы отправить снова"
                 >
-                  ↻ Повторить
+                  🔗 Ссылка
                 </button>
                 <button
                   onClick={() => handleRemove(m)}
@@ -118,7 +122,10 @@ export function TeamPanel({
       </div>
 
       <form onSubmit={handleInvite} className="rounded-lg border border-neutral-800 p-4 flex flex-col gap-2">
-        <h4 className="text-sm font-medium text-neutral-200">Пригласить</h4>
+        <h4 className="text-sm font-medium text-neutral-200">Добавить участника</h4>
+        <p className="text-xs text-neutral-500 -mt-1">
+          Письмо не отправляется — после добавления скопируется ссылка на проект, отправьте её сами.
+        </p>
         <input
           required
           type="email"
@@ -141,7 +148,7 @@ export function TeamPanel({
           disabled={busy}
           className="self-start rounded bg-white text-neutral-900 text-sm font-medium px-4 py-1.5 disabled:opacity-50"
         >
-          {busy ? "Отправляем…" : "Отправить приглашение"}
+          {busy ? "Добавляем…" : "Добавить"}
         </button>
         {message && <p className="text-xs text-neutral-400">{message}</p>}
       </form>
