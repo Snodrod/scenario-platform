@@ -1,6 +1,6 @@
-import OpenAI from "openai";
 import { z } from "zod";
 import type { BreakdownResult } from "./types";
+import { generateJSON, resolveDefaultTextProvider, type TextProviderId } from "./text";
 
 type ProjectFormatLike = "long" | "short";
 
@@ -64,28 +64,15 @@ ${characterNote}
 export async function breakdownScript(
   script: string,
   format: ProjectFormatLike,
-  characterNames: string[] = []
+  characterNames: string[] = [],
+  provider?: TextProviderId
 ): Promise<BreakdownResult> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not set — add it to .env.local");
-  }
-
-  const client = new OpenAI({ apiKey });
-  const model = process.env.OPENAI_BREAKDOWN_MODEL || "gpt-4o-mini";
-
-  const completion = await client.chat.completions.create({
-    model,
-    temperature: 0.4,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: systemPrompt(format, characterNames) },
-      { role: "user", content: script },
-    ],
-  });
-
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) throw new Error("Breakdown model returned an empty response");
+  const raw = await generateJSON(
+    provider ?? resolveDefaultTextProvider(),
+    systemPrompt(format, characterNames),
+    script,
+    0.4
+  );
 
   let parsed: unknown;
   try {

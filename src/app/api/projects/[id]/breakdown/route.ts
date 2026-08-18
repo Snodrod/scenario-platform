@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { breakdownScript } from "@/lib/ai/breakdown";
 import { resolveProjectRole } from "@/lib/project-access";
+import type { TextProviderId } from "@/lib/ai/text";
+
+export const maxDuration = 60;
 
 // Re-runs the AI breakdown for a project's current script content.
 // Destructive: replaces all existing scenes/shots for this script (and
@@ -39,12 +42,16 @@ export async function POST(request: Request, ctx: RouteContext<"/api/projects/[i
     return NextResponse.json({ error: "script is empty" }, { status: 400 });
   }
 
+  const body = await request.json().catch(() => ({}));
+  const provider: TextProviderId | undefined = body?.provider === "gemini" || body?.provider === "openai" ? body.provider : undefined;
+
   let breakdown;
   try {
     breakdown = await breakdownScript(
       script.content,
       project.format === "short" ? "short" : "long",
-      (characters ?? []).map((c) => c.name)
+      (characters ?? []).map((c) => c.name),
+      provider
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "breakdown failed";

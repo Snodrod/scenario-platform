@@ -8,6 +8,7 @@ import { StoryboardPanel } from "./StoryboardPanel";
 import { CharacterPanel } from "./CharacterPanel";
 import { TeamPanel } from "./TeamPanel";
 import { ExportButton } from "./ExportButton";
+import type { TextProviderId } from "@/lib/ai/text-types";
 
 type Tab = "script" | "storyboard" | "characters" | "team";
 
@@ -29,6 +30,7 @@ export function ProjectWorkspace({
   driveConfigured,
   driveConnected,
   notionConfigured,
+  textProviders,
 }: {
   project: ProjectRow;
   script: ScriptRow;
@@ -40,6 +42,7 @@ export function ProjectWorkspace({
   driveConfigured: boolean;
   driveConnected: boolean;
   notionConfigured: boolean;
+  textProviders: TextProviderId[];
 }) {
   const [tab, setTab] = useState<Tab>("script");
   const canEdit = role === "owner" || role === "co_writer";
@@ -83,10 +86,17 @@ export function ProjectWorkspace({
           driveConfigured={driveConfigured}
           driveConnected={driveConnected}
           notionConfigured={notionConfigured}
+          textProviders={textProviders}
         />
       )}
       {tab === "storyboard" && (
-        <StoryboardPanel projectId={project.id} scriptId={script.id} initialScenes={scenes} canEdit={canEdit} />
+        <StoryboardPanel
+          projectId={project.id}
+          scriptId={script.id}
+          initialScenes={scenes}
+          canEdit={canEdit}
+          textProviders={textProviders}
+        />
       )}
       {tab === "characters" && (
         <CharacterPanel projectId={project.id} initialCharacters={characters} canEdit={canEdit} />

@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveProjectRole } from "@/lib/project-access";
 import { matchRevisionsToShots } from "@/lib/ai/revisions";
+import type { TextProviderId } from "@/lib/ai/text";
+
+export const maxDuration = 60;
 
 // Takes a raw block of client feedback (pasted from an email/chat) and
 // uses an LLM to split it into per-shot comments — same effect as a
@@ -29,7 +32,9 @@ export async function POST(request: Request, ctx: RouteContext<"/api/projects/[i
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const { text } = await request.json().catch(() => ({}));
+  const body = await request.json().catch(() => ({}));
+  const text: string | undefined = body?.text;
+  const provider: TextProviderId | undefined = body?.provider === "gemini" || body?.provider === "openai" ? body.provider : undefined;
   if (!text?.trim()) return NextResponse.json({ error: "text is required" }, { status: 400 });
 
   const { data: rawShots } = await supabase
@@ -48,7 +53,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/projects/[i
 
   let matches;
   try {
-    matches = await matchRevisionsToShots(shots, text);
+    matches = await matchRevisionsToShots(shots, text, provider);
   } catch (err) {
     const message = err instanceof Error ? err.message : "revision matching failed";
     return NextResponse.json({ error: message }, { status: 502 });

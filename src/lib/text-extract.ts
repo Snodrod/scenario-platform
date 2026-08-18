@@ -95,7 +95,13 @@ interface NotionBlock {
   [key: string]: unknown;
 }
 
-async function notionApi(path: string) {
+interface NotionBlockChildrenResponse {
+  results?: NotionBlock[];
+  has_more?: boolean;
+  next_cursor?: string;
+}
+
+async function notionApi(path: string, attempt = 0): Promise<NotionBlockChildrenResponse> {
   const apiKey = process.env.NOTION_API_KEY;
   if (!apiKey) throw new Error("NOTION_API_KEY is not set — add it to .env.local");
 
@@ -110,8 +116,29 @@ async function notionApi(path: string) {
       "Страница не найдена или не расшарена с интеграцией — откройте её в Notion → «...» → Connections → добавьте вашу интеграцию"
     );
   }
+  if (res.status === 429 && attempt < 4) {
+    const retryAfter = Number(res.headers.get("retry-after")) || 1;
+    await new Promise((r) => setTimeout(r, retryAfter * 1000));
+    return notionApi(path, attempt + 1);
+  }
   if (!res.ok) throw new Error(`Notion API error: ${res.status}`);
   return res.json();
+}
+
+// Runs `fn` over `items` with at most `limit` in flight at once — fast
+// (unlike full sequential recursion, which took minutes on a real page),
+// but still under Notion's ~3 req/s rate limit.
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
 }
 
 function blockToText(block: NotionBlock): string {
@@ -143,26 +170,31 @@ function blockToText(block: NotionBlock): string {
 
 async function fetchBlockChildrenRecursive(blockId: string, depth = 0): Promise<string[]> {
   if (depth > 6) return []; // guard against pathological nesting
-  const lines: string[] = [];
-  let cursor: string | undefined;
 
+  // Pagination for one parent is inherently sequential (cursor-based),
+  // but that's rarely more than a couple of pages even for a long doc.
+  const blocks: NotionBlock[] = [];
+  let cursor: string | undefined;
   do {
     const query = cursor ? `?start_cursor=${cursor}&page_size=100` : "?page_size=100";
     const data = await notionApi(`/v1/blocks/${blockId}/children${query}`);
-    const blocks: NotionBlock[] = data.results ?? [];
-
-    for (const block of blocks) {
-      const line = blockToText(block);
-      if (line) lines.push(line);
-      if (block.has_children) {
-        const childLines = await fetchBlockChildrenRecursive(block.id, depth + 1);
-        lines.push(...childLines.map((l) => `  ${l}`));
-      }
-    }
-
+    blocks.push(...(data.results ?? []));
     cursor = data.has_more ? data.next_cursor : undefined;
   } while (cursor);
 
+  // Recurse into every child WITH children concurrently (bounded) instead
+  // of one at a time — a real page with many toggles/sub-lists went from
+  // minutes to seconds after this change.
+  const childResults = await mapWithConcurrency(blocks, 6, (block) =>
+    block.has_children ? fetchBlockChildrenRecursive(block.id, depth + 1) : Promise.resolve([] as string[])
+  );
+
+  const lines: string[] = [];
+  blocks.forEach((block, i) => {
+    const line = blockToText(block);
+    if (line) lines.push(line);
+    lines.push(...childResults[i].map((l) => `  ${l}`));
+  });
   return lines;
 }
 

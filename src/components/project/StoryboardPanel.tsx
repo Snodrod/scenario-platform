@@ -4,17 +4,20 @@ import { useState } from "react";
 import type { SceneWithShots } from "@/lib/types";
 import { ShotCard } from "./ShotCard";
 import { RevisionsImport } from "./RevisionsImport";
+import type { TextProviderId } from "@/lib/ai/text-types";
 
 export function StoryboardPanel({
   projectId,
   scriptId,
   initialScenes,
   canEdit,
+  textProviders,
 }: {
   projectId: string;
   scriptId: string;
   initialScenes: SceneWithShots[];
   canEdit: boolean;
+  textProviders: TextProviderId[];
 }) {
   const [scenes, setScenes] = useState<SceneWithShots[]>(initialScenes);
 
@@ -120,7 +123,7 @@ export function StoryboardPanel({
 
   return (
     <div className="flex flex-col gap-8">
-      {canEdit && <RevisionsImport projectId={projectId} />}
+      {canEdit && <RevisionsImport projectId={projectId} textProviders={textProviders} />}
       {scenes
         .sort((a, b) => a.order_index - b.order_index)
         .map((scene, sceneIdx) => (

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImportMenu } from "./ImportMenu";
+import { TEXT_PROVIDER_LABEL, type TextProviderId } from "@/lib/ai/text-types";
 
 export function ScriptPanel({
   scriptId,
@@ -13,6 +14,7 @@ export function ScriptPanel({
   driveConfigured,
   driveConnected,
   notionConfigured,
+  textProviders,
 }: {
   scriptId: string;
   projectId: string;
@@ -22,6 +24,7 @@ export function ScriptPanel({
   driveConfigured: boolean;
   driveConnected: boolean;
   notionConfigured: boolean;
+  textProviders: TextProviderId[];
 }) {
   const router = useRouter();
   const [content, setContent] = useState(initialContent);
@@ -29,6 +32,7 @@ export function ScriptPanel({
   const [breaking, setBreaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [provider, setProvider] = useState<TextProviderId | undefined>(textProviders[0]);
 
   async function save() {
     setSaving(true);
@@ -57,7 +61,11 @@ export function ScriptPanel({
     setBreaking(true);
     setError(null);
     await save();
-    const res = await fetch(`/api/projects/${projectId}/breakdown`, { method: "POST" });
+    const res = await fetch(`/api/projects/${projectId}/breakdown`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider }),
+    });
     setBreaking(false);
     if (!res.ok) {
       const json = await res.json();
@@ -106,11 +114,28 @@ export function ScriptPanel({
           </button>
           <button
             onClick={runBreakdown}
-            disabled={breaking || !content.trim()}
+            disabled={breaking || !content.trim() || !provider}
             className="rounded-lg bg-white text-neutral-900 text-sm font-medium px-4 py-2 disabled:opacity-50"
           >
             {breaking ? "Разбиваем на сцены…" : hasScenes ? "Разбить заново" : "Разбить на сцены"}
           </button>
+          {textProviders.length > 0 ? (
+            <select
+              value={provider}
+              onChange={(e) => setProvider(e.target.value as TextProviderId)}
+              className="rounded-lg border border-neutral-700 bg-neutral-900 text-sm px-2 py-2 text-neutral-300"
+            >
+              {textProviders.map((p) => (
+                <option key={p} value={p}>
+                  {TEXT_PROVIDER_LABEL[p]}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-xs text-red-500">
+              Не настроена ни одна текстовая LLM — задайте OPENAI_API_KEY или GOOGLE_API_KEY
+            </span>
+          )}
           {savedAt && <span className="text-xs text-neutral-500">Сохранено {savedAt.toLocaleTimeString()}</span>}
         </div>
       )}

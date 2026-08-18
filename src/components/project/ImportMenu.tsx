@@ -32,74 +32,83 @@ export function ImportMenu({
     setError(null);
   }
 
+  // Every import path funnels through this so a network error, a timeout,
+  // or a non-JSON error response (e.g. a crashed route returning HTML)
+  // always clears `busy` and shows a message instead of hanging forever
+  // on "Загружаем…".
+  async function safeRequest(run: () => Promise<Response>): Promise<unknown | null> {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await run();
+      let json: unknown;
+      try {
+        json = await res.json();
+      } catch {
+        throw new Error(`Сервер вернул неожиданный ответ (${res.status})`);
+      }
+      if (!res.ok) {
+        setError((json as { error?: string })?.error ?? `Ошибка (${res.status})`);
+        return null;
+      }
+      return json;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось выполнить запрос");
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setBusy(true);
-    setError(null);
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch("/api/import/file", { method: "POST", body: form });
-    const json = await res.json();
-    setBusy(false);
-    if (!res.ok) return setError(json.error);
-    handleResult(json.text);
+    const json = await safeRequest(() => fetch("/api/import/file", { method: "POST", body: form }));
+    if (json) handleResult((json as { text: string }).text);
   }
 
   async function handleGdoc(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    const res = await fetch("/api/import/gdoc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: gdocUrl }),
-    });
-    const json = await res.json();
-    setBusy(false);
-    if (!res.ok) return setError(json.error);
-    handleResult(json.text);
+    const json = await safeRequest(() =>
+      fetch("/api/import/gdoc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: gdocUrl }),
+      })
+    );
+    if (json) handleResult((json as { text: string }).text);
   }
 
   async function handleNotion(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
-    setError(null);
-    const res = await fetch("/api/import/notion", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: notionUrl }),
-    });
-    const json = await res.json();
-    setBusy(false);
-    if (!res.ok) return setError(json.error);
-    handleResult(json.text);
+    const json = await safeRequest(() =>
+      fetch("/api/import/notion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: notionUrl }),
+      })
+    );
+    if (json) handleResult((json as { text: string }).text);
   }
 
   async function openDriveTab() {
     setTab("drive");
     if (!driveConnected || driveFiles) return;
-    setBusy(true);
-    setError(null);
-    const res = await fetch("/api/import/drive/list");
-    const json = await res.json();
-    setBusy(false);
-    if (!res.ok) return setError(json.error);
-    setDriveFiles(json.files);
+    const json = await safeRequest(() => fetch("/api/import/drive/list"));
+    if (json) setDriveFiles((json as { files: DriveFile[] }).files);
   }
 
   async function handlePickDriveFile(fileId: string) {
-    setBusy(true);
-    setError(null);
-    const res = await fetch("/api/import/drive/fetch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileId }),
-    });
-    const json = await res.json();
-    setBusy(false);
-    if (!res.ok) return setError(json.error);
-    handleResult(json.text);
+    const json = await safeRequest(() =>
+      fetch("/api/import/drive/fetch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileId }),
+      })
+    );
+    if (json) handleResult((json as { text: string }).text);
   }
 
   if (!open) {

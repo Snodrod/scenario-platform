@@ -4,6 +4,8 @@ import { createElement } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { StoryboardDocument, type PdfScene } from "@/lib/pdf/StoryboardDocument";
 
+export const maxDuration = 60;
+
 export async function GET(_request: Request, ctx: RouteContext<"/api/projects/[id]/export/pdf">) {
   const { id: projectId } = await ctx.params;
   const supabase = await createClient();

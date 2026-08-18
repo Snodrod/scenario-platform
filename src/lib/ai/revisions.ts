@@ -1,5 +1,5 @@
-import OpenAI from "openai";
 import { z } from "zod";
+import { generateJSON, resolveDefaultTextProvider, type TextProviderId } from "./text";
 
 export interface ShotContext {
   id: string;
@@ -40,14 +40,10 @@ function systemPrompt() {
 
 export async function matchRevisionsToShots(
   shots: ShotContext[],
-  revisionText: string
+  revisionText: string,
+  provider?: TextProviderId
 ): Promise<RevisionMatch[]> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error("OPENAI_API_KEY is not set — add it to .env.local");
   if (shots.length === 0) throw new Error("В проекте пока нет кадров, к которым можно привязать правки");
-
-  const client = new OpenAI({ apiKey });
-  const model = process.env.OPENAI_BREAKDOWN_MODEL || "gpt-4o-mini";
 
   const shotList = shots
     .map(
@@ -56,18 +52,12 @@ export async function matchRevisionsToShots(
     )
     .join("\n");
 
-  const completion = await client.chat.completions.create({
-    model,
-    temperature: 0.2,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: systemPrompt() },
-      { role: "user", content: `КАДРЫ ПРОЕКТА:\n${shotList}\n\nТЕКСТ ПРАВОК КЛИЕНТА:\n${revisionText}` },
-    ],
-  });
-
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) throw new Error("Model returned an empty response");
+  const raw = await generateJSON(
+    provider ?? resolveDefaultTextProvider(),
+    systemPrompt(),
+    `КАДРЫ ПРОЕКТА:\n${shotList}\n\nТЕКСТ ПРАВОК КЛИЕНТА:\n${revisionText}`,
+    0.2
+  );
 
   let parsed: unknown;
   try {

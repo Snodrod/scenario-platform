@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getImageProvider } from "@/lib/ai/providers";
 
+export const maxDuration = 60;
+
 export async function POST(request: Request, ctx: RouteContext<"/api/shots/[id]/generate">) {
   const { id: shotId } = await ctx.params;
   const supabase = await createClient();

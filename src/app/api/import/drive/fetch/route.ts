@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthorizedDriveClient, getValidAccessToken } from "@/lib/google/oauth";
 import { extractTextFromFile } from "@/lib/text-extract";
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {

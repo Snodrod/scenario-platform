@@ -1,13 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import { TEXT_PROVIDER_LABEL, type TextProviderId } from "@/lib/ai/text-types";
 
-export function RevisionsImport({ projectId }: { projectId: string }) {
+export function RevisionsImport({
+  projectId,
+  textProviders,
+}: {
+  projectId: string;
+  textProviders: TextProviderId[];
+}) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const [provider, setProvider] = useState<TextProviderId | undefined>(textProviders[0]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -17,7 +25,7 @@ export function RevisionsImport({ projectId }: { projectId: string }) {
     const res = await fetch(`/api/projects/${projectId}/revisions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, provider }),
     });
     const json = await res.json();
     setBusy(false);
@@ -62,13 +70,30 @@ export function RevisionsImport({ projectId }: { projectId: string }) {
           placeholder="Кадр 3 — поменять план на общий...&#10;В сцене с журавлями слишком тёмно...&#10;..."
           className="w-full rounded bg-neutral-800 border border-neutral-700 px-2 py-1.5 text-sm text-neutral-100 font-mono"
         />
-        <button
-          type="submit"
-          disabled={busy || !text.trim()}
-          className="self-start rounded bg-white text-neutral-900 text-sm font-medium px-4 py-1.5 disabled:opacity-50"
-        >
-          {busy ? "Разбираем правки…" : "Применить"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="submit"
+            disabled={busy || !text.trim() || !provider}
+            className="self-start rounded bg-white text-neutral-900 text-sm font-medium px-4 py-1.5 disabled:opacity-50"
+          >
+            {busy ? "Разбираем правки…" : "Применить"}
+          </button>
+          {textProviders.length > 0 ? (
+            <select
+              value={provider}
+              onChange={(e) => setProvider(e.target.value as TextProviderId)}
+              className="rounded border border-neutral-700 bg-neutral-800 text-xs px-2 py-1.5 text-neutral-300"
+            >
+              {textProviders.map((p) => (
+                <option key={p} value={p}>
+                  {TEXT_PROVIDER_LABEL[p]}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-xs text-red-500">Не настроена ни одна текстовая LLM</span>
+          )}
+        </div>
       </form>
       {result && <p className="text-xs text-emerald-400 mt-2">{result}</p>}
       {error && <p className="text-xs text-red-500 mt-2">{error}</p>}

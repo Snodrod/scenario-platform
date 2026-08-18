@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { fetchNotionPageText } from "@/lib/text-extract";
 
+// Large pages walk hundreds of blocks even with bounded concurrency —
+// Vercel's default 10s function timeout isn't enough. Requires a plan
+// that supports it (Hobby caps at 60s regardless of this value).
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const {
