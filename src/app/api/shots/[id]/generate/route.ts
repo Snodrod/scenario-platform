@@ -13,7 +13,8 @@ export async function POST(request: Request, ctx: RouteContext<"/api/shots/[id]/
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));
-  const providerId = body?.provider === "gemini" ? "gemini" : "openai";
+  const providerId =
+    body?.provider === "gemini" || body?.provider === "pollinations" ? body.provider : "pollinations";
   const aspectRatio = body?.aspectRatio ?? undefined;
   const overridePrompt = typeof body?.prompt === "string" ? body.prompt : undefined;
 

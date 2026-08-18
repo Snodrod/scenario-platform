@@ -49,7 +49,11 @@ export function StoryboardPanel({
     await fetch(`/api/shots/${shotId}`, { method: "DELETE" });
   }
 
-  async function generateShot(sceneId: string, shotId: string, opts: { provider: "openai" | "gemini"; prompt?: string }) {
+  async function generateShot(
+    sceneId: string,
+    shotId: string,
+    opts: { provider: "openai" | "gemini" | "pollinations"; prompt?: string }
+  ) {
     const res = await fetch(`/api/shots/${shotId}/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -1,10 +1,12 @@
 import type { ImageProvider, MusicProvider, VoiceProvider } from "../types";
 import { openaiImageProvider } from "./openai-image";
 import { geminiImageProvider } from "./gemini-image";
+import { pollinationsImageProvider } from "./pollinations-image";
 
 export const imageProviders: Record<string, ImageProvider> = {
   openai: openaiImageProvider,
   gemini: geminiImageProvider,
+  pollinations: pollinationsImageProvider,
 };
 
 export function getImageProvider(id: string): ImageProvider {

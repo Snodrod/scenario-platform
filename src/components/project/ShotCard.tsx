@@ -33,10 +33,10 @@ export function ShotCard({
   canEdit: boolean;
   onUpdate: (patch: Record<string, unknown>) => void;
   onDelete: () => void;
-  onGenerate: (opts: { provider: "openai" | "gemini"; prompt?: string }) => Promise<void>;
+  onGenerate: (opts: { provider: "openai" | "gemini" | "pollinations"; prompt?: string }) => Promise<void>;
 }) {
   const [customPrompt, setCustomPrompt] = useState(shot.prompt);
-  const [provider, setProvider] = useState<"openai" | "gemini">("openai");
+  const [provider, setProvider] = useState<"openai" | "gemini" | "pollinations">("pollinations");
   const [generating, setGenerating] = useState(false);
   const [showVO, setShowVO] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -169,9 +169,10 @@ export function ShotCard({
             <div className="flex flex-wrap items-center gap-2">
               <select
                 value={provider}
-                onChange={(e) => setProvider(e.target.value as "openai" | "gemini")}
+                onChange={(e) => setProvider(e.target.value as "openai" | "gemini" | "pollinations")}
                 className="rounded bg-neutral-800 border border-neutral-700 px-2 py-1 text-xs"
               >
+                <option value="pollinations">Pollinations.ai (бесплатно)</option>
                 <option value="openai">OpenAI (GPT Image)</option>
                 <option value="gemini">Google (Nano Banana)</option>
               </select>
