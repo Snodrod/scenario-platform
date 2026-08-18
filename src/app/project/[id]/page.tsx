@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Header } from "@/components/Header";
 import { ProjectWorkspace } from "@/components/project/ProjectWorkspace";
 import type { SceneWithShots } from "@/lib/types";
+import { resolveProjectRole } from "@/lib/project-access";
 
 export default async function ProjectPage(props: PageProps<"/project/[id]">) {
   const { id } = await props.params;
@@ -15,8 +16,15 @@ export default async function ProjectPage(props: PageProps<"/project/[id]">) {
   const { data: project } = await supabase.from("projects").select("*").eq("id", id).single();
   if (!project) notFound();
 
-  const { data: roleData } = await supabase.rpc("project_role", { pid: id });
-  const role = roleData ?? "viewer";
+  const { data: currentMembership } = await supabase
+    .from("project_members")
+    .select("role")
+    .eq("project_id", id)
+    .eq("user_id", user?.id ?? "")
+    .maybeSingle();
+  const role = user
+    ? resolveProjectRole({ ownerId: project.owner_id, userId: user.id, membershipRole: currentMembership?.role }) ?? "viewer"
+    : "viewer";
 
   const { data: script } = await supabase.from("scripts").select("*").eq("project_id", id).single();
 

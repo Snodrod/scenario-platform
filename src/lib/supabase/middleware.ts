@@ -25,9 +25,10 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Verify the JWT while refreshing the session. `getSession()` only reads
+  // cookie data and must not be used to authorize a request.
+  const { data: verifiedToken } = await supabase.auth.getClaims();
+  const user = verifiedToken ? { id: verifiedToken.claims.sub } : null;
 
   const isAppRoute = request.nextUrl.pathname.startsWith("/dashboard") ||
     request.nextUrl.pathname.startsWith("/project");

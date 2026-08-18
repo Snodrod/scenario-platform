@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveProjectRole } from "@/lib/project-access";
 
 // Invites a collaborator (co-writer or client-reviewer) by email.
 // - If they already have an account, link it immediately.
@@ -15,7 +16,16 @@ export async function POST(request: Request, ctx: RouteContext<"/api/projects/[i
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const { data: role } = await supabase.rpc("project_role", { pid: projectId });
+  const { data: project } = await supabase.from("projects").select("owner_id").eq("id", projectId).maybeSingle();
+  if (!project) return NextResponse.json({ error: "project not found" }, { status: 404 });
+
+  const { data: membership } = await supabase
+    .from("project_members")
+    .select("role")
+    .eq("project_id", projectId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const role = resolveProjectRole({ ownerId: project.owner_id, userId: user.id, membershipRole: membership?.role });
   if (role !== "owner" && role !== "co_writer") {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
