@@ -45,18 +45,31 @@ async function generateJSONWithOpenAI(systemPrompt: string, userPrompt: string, 
   const client = new OpenAI({ apiKey });
   const model = process.env.OPENAI_TEXT_MODEL || "gpt-4o-mini";
 
-  const completion = await client.chat.completions.create({
-    model,
-    temperature,
-    response_format: { type: "json_object" },
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-  });
+  let completion;
+  try {
+    completion = await client.chat.completions.create({
+      model,
+      temperature,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    });
+  } catch (err) {
+    console.error("[ai/text] OpenAI call failed:", err);
+    throw err;
+  }
 
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) throw new Error("OpenAI returned an empty response");
+  const choice = completion.choices[0];
+  if (choice?.finish_reason === "length") {
+    throw new Error("Ответ модели обрезан по лимиту токенов — попробуйте сократить сценарий или разбить его на части");
+  }
+  const raw = choice?.message?.content;
+  if (!raw) {
+    console.error("[ai/text] OpenAI returned no content, full response:", JSON.stringify(completion));
+    throw new Error("OpenAI returned an empty response");
+  }
   return raw;
 }
 
@@ -72,11 +85,37 @@ async function generateJSONWithGemini(systemPrompt: string, userPrompt: string, 
   const model = genAI.getGenerativeModel({
     model: modelName,
     systemInstruction: systemPrompt,
-    generationConfig: { temperature, responseMimeType: "application/json" },
+    generationConfig: { temperature, responseMimeType: "application/json", maxOutputTokens: 32768 },
   });
 
-  const result = await model.generateContent(userPrompt);
-  const raw = result.response.text();
+  let result;
+  try {
+    result = await model.generateContent(userPrompt);
+  } catch (err) {
+    console.error("[ai/text] Gemini call failed:", err);
+    throw err;
+  }
+
+  const candidate = result.response.candidates?.[0];
+  const finishReason = candidate?.finishReason;
+  if (finishReason && finishReason !== "STOP") {
+    console.error("[ai/text] Gemini finished abnormally:", finishReason, JSON.stringify(candidate?.safetyRatings));
+    if (finishReason === "MAX_TOKENS") {
+      throw new Error("Ответ модели обрезан по лимиту токенов — попробуйте сократить сценарий или разбить его на части");
+    }
+    if (finishReason === "SAFETY" || finishReason === "PROHIBITED_CONTENT" || finishReason === "RECITATION") {
+      throw new Error(`Gemini заблокировал ответ (${finishReason}) — попробуйте другой провайдер (OpenAI) или переформулируйте текст`);
+    }
+    throw new Error(`Gemini не завершил генерацию нормально (${finishReason})`);
+  }
+
+  let raw: string;
+  try {
+    raw = result.response.text();
+  } catch (err) {
+    console.error("[ai/text] Gemini response.text() threw:", err, JSON.stringify(result.response));
+    throw new Error("Gemini не вернул текстовый ответ — попробуйте другой провайдер (OpenAI)");
+  }
   if (!raw) throw new Error("Gemini returned an empty response");
   return raw;
 }

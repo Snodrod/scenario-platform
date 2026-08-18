@@ -78,10 +78,17 @@ export async function breakdownScript(
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new Error("Breakdown model did not return valid JSON");
+    console.error("[breakdown] invalid JSON from model, length:", raw.length, "tail:", raw.slice(-500));
+    throw new Error("Модель вернула невалидный JSON (возможно, ответ обрезан) — попробуйте другой провайдер или сократите сценарий");
   }
 
-  const result = responseSchema.parse(parsed);
+  let result;
+  try {
+    result = responseSchema.parse(parsed);
+  } catch (err) {
+    console.error("[breakdown] schema validation failed:", err, "raw:", JSON.stringify(parsed).slice(0, 1000));
+    throw new Error("Модель вернула неожиданный формат данных — попробуйте ещё раз или смените провайдера");
+  }
 
   return {
     scenes: result.scenes.map((scene, sceneIndex) => ({

@@ -63,10 +63,17 @@ export async function matchRevisionsToShots(
   try {
     parsed = JSON.parse(raw);
   } catch {
-    throw new Error("Model did not return valid JSON");
+    console.error("[revisions] invalid JSON from model, length:", raw.length, "tail:", raw.slice(-500));
+    throw new Error("Модель вернула невалидный JSON — попробуйте другой провайдер");
   }
 
-  const result = resultSchema.parse(parsed);
+  let result;
+  try {
+    result = resultSchema.parse(parsed);
+  } catch (err) {
+    console.error("[revisions] schema validation failed:", err);
+    throw new Error("Модель вернула неожиданный формат данных — попробуйте ещё раз");
+  }
   const validShotIds = new Set(shots.map((s) => s.id));
   return result.items.filter((item) => validShotIds.has(item.shotId));
 }

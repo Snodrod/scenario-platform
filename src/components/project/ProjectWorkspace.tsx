@@ -76,7 +76,12 @@ export function ProjectWorkspace({
           ))}
       </div>
 
-      {tab === "script" && (
+      {/* Every tab panel stays mounted and keeps its own local state
+          (unsaved script edits, open import menus, etc.) — only CSS
+          visibility toggles. Unmounting on tab switch used to reset each
+          panel back to its server-loaded initial props, silently
+          discarding anything the user hadn't saved yet. */}
+      <div className={tab === "script" ? "" : "hidden"}>
         <ScriptPanel
           scriptId={script.id}
           projectId={project.id}
@@ -88,21 +93,29 @@ export function ProjectWorkspace({
           notionConfigured={notionConfigured}
           textProviders={textProviders}
         />
-      )}
-      {tab === "storyboard" && (
+      </div>
+      <div className={tab === "storyboard" ? "" : "hidden"}>
         <StoryboardPanel
+          // Remount (resetting local state to the fresh server data)
+          // whenever the actual set of scenes/shots changes server-side —
+          // e.g. after "Разбить на сцены" — rather than only on first
+          // mount. The panel stays mounted across tab switches otherwise,
+          // so without this key it would keep showing stale data.
+          key={scenes.map((s) => `${s.id}:${s.shots.length}`).join(",")}
           projectId={project.id}
           scriptId={script.id}
           initialScenes={scenes}
           canEdit={canEdit}
           textProviders={textProviders}
         />
-      )}
-      {tab === "characters" && (
+      </div>
+      <div className={tab === "characters" ? "" : "hidden"}>
         <CharacterPanel projectId={project.id} initialCharacters={characters} canEdit={canEdit} />
-      )}
-      {tab === "team" && isOwnerOrWriter && (
-        <TeamPanel projectId={project.id} initialMembers={members} ownerEmail={ownerEmail} />
+      </div>
+      {isOwnerOrWriter && (
+        <div className={tab === "team" ? "" : "hidden"}>
+          <TeamPanel projectId={project.id} initialMembers={members} ownerEmail={ownerEmail} />
+        </div>
       )}
     </div>
   );
