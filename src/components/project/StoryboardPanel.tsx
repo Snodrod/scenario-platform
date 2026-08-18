@@ -5,6 +5,8 @@ import type { SceneWithShots } from "@/lib/types";
 import { ShotCard } from "./ShotCard";
 import { RevisionsImport } from "./RevisionsImport";
 import type { TextProviderId } from "@/lib/ai/text-types";
+import { fetchJson } from "@/lib/fetch-json";
+import type { GenerationRow, SceneRow, ShotRow } from "@/lib/types";
 
 export function StoryboardPanel({
   projectId,
@@ -54,14 +56,13 @@ export function StoryboardPanel({
     shotId: string,
     opts: { provider: "openai" | "gemini" | "pollinations"; prompt?: string }
   ) {
-    const res = await fetch(`/api/shots/${shotId}/generate`, {
+    const { ok, data, error } = await fetchJson<{ generation: GenerationRow }>(`/api/shots/${shotId}/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(opts),
     });
-    const json = await res.json();
-    if (!res.ok) {
-      window.alert(`Ошибка генерации: ${json.error ?? "неизвестная ошибка"}`);
+    if (!ok || !data) {
+      window.alert(`Ошибка генерации: ${error ?? "неизвестная ошибка"}`);
       return;
     }
     setScenes((prev) =>
@@ -72,7 +73,7 @@ export function StoryboardPanel({
               ...scene,
               shots: scene.shots.map((s) =>
                 s.id === shotId
-                  ? { ...s, status: "needs_review", activeGeneration: json.generation, prompt: opts.prompt ?? s.prompt }
+                  ? { ...s, status: "needs_review", activeGeneration: data.generation, prompt: opts.prompt ?? s.prompt }
                   : s
               ),
             }
@@ -81,12 +82,14 @@ export function StoryboardPanel({
   }
 
   async function addShot(sceneId: string) {
-    const res = await fetch(`/api/scenes/${sceneId}/shots`, { method: "POST", body: JSON.stringify({}) });
-    const json = await res.json();
-    if (!res.ok) return;
+    const { ok, data } = await fetchJson<{ shot: ShotRow }>(`/api/scenes/${sceneId}/shots`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    if (!ok || !data) return;
     setScenes((prev) =>
       prev.map((scene) =>
-        scene.id !== sceneId ? scene : { ...scene, shots: [...scene.shots, { ...json.shot, activeGeneration: null }] }
+        scene.id !== sceneId ? scene : { ...scene, shots: [...scene.shots, { ...data.shot, activeGeneration: null }] }
       )
     );
   }
@@ -94,14 +97,13 @@ export function StoryboardPanel({
   async function addScene() {
     const title = window.prompt("Название сцены:", "Новая сцена");
     if (title === null) return;
-    const res = await fetch("/api/scenes", {
+    const { ok, data } = await fetchJson<{ scene: SceneRow }>("/api/scenes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId, scriptId, title }),
     });
-    const json = await res.json();
-    if (!res.ok) return;
-    setScenes((prev) => [...prev, { ...json.scene, shots: [] }]);
+    if (!ok || !data) return;
+    setScenes((prev) => [...prev, { ...data.scene, shots: [] }]);
   }
 
   async function deleteScene(sceneId: string) {

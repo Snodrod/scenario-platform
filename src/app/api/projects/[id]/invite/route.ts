@@ -34,6 +34,16 @@ export async function POST(request: Request, ctx: RouteContext<"/api/projects/[i
   const targetRole = ["co_writer", "client", "viewer"].includes(inviteRole) ? inviteRole : "client";
   if (!email?.trim()) return NextResponse.json({ error: "email is required" }, { status: 400 });
 
+  // createAdminClient() throws synchronously if this is unset — a bare
+  // exception here means Next.js returns its default error page instead
+  // of JSON, which crashes the client's res.json() with a cryptic parse
+  // error rather than showing "not configured". Catch it explicitly.
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return NextResponse.json(
+      { error: "Приглашения не настроены — не задан SUPABASE_SERVICE_ROLE_KEY на сервере (см. README)" },
+      { status: 501 }
+    );
+  }
   const admin = createAdminClient();
 
   const { data: existingProfile } = await admin

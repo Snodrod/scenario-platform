@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { MemberRole } from "@/lib/supabase/types";
+import { fetchJson } from "@/lib/fetch-json";
 
 interface MemberWithEmail {
   user_id: string;
@@ -35,15 +36,14 @@ export function TeamPanel({
     e.preventDefault();
     setBusy(true);
     setMessage(null);
-    const res = await fetch(`/api/projects/${projectId}/invite`, {
+    const { ok, error } = await fetchJson(`/api/projects/${projectId}/invite`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, role }),
     });
-    const json = await res.json();
     setBusy(false);
-    if (!res.ok) {
-      setMessage(`Ошибка: ${json.error}`);
+    if (!ok) {
+      setMessage(`Ошибка: ${error}`);
       return;
     }
     setMembers((prev) => [...prev, { user_id: crypto.randomUUID(), role, email }]);

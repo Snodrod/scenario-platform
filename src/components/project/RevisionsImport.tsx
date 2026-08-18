@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { TEXT_PROVIDER_LABEL, type TextProviderId } from "@/lib/ai/text-types";
+import { fetchJson } from "@/lib/fetch-json";
 
 export function RevisionsImport({
   projectId,
@@ -22,20 +23,19 @@ export function RevisionsImport({
     setBusy(true);
     setError(null);
     setResult(null);
-    const res = await fetch(`/api/projects/${projectId}/revisions`, {
+    const { ok, data, error: err } = await fetchJson<{ count: number }>(`/api/projects/${projectId}/revisions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text, provider }),
     });
-    const json = await res.json();
     setBusy(false);
-    if (!res.ok) {
-      setError(json.error);
+    if (!ok || !data) {
+      setError(err);
       return;
     }
     setResult(
-      json.count > 0
-        ? `Добавлено ${json.count} комментариев на соответствующие кадры. Откройте «💬 Комментарии» на кадре, чтобы посмотреть.`
+      data.count > 0
+        ? `Добавлено ${data.count} комментариев на соответствующие кадры. Откройте «💬 Комментарии» на кадре, чтобы посмотреть.`
         : "Не удалось привязать ни одной правки к конкретному кадру — попробуйте уточнить формулировки или номера кадров."
     );
     setText("");

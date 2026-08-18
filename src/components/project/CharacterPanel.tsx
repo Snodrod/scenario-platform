@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { CharacterRow } from "@/lib/types";
+import { fetchJson } from "@/lib/fetch-json";
 
 export function CharacterPanel({
   projectId,
@@ -38,18 +39,17 @@ export function CharacterPanel({
       }
     }
 
-    const res = await fetch("/api/characters", {
+    const { ok, data, error } = await fetchJson<{ character: CharacterRow }>("/api/characters", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectId, name, description, referenceAssetUrls }),
     });
-    const json = await res.json();
     setBusy(false);
-    if (!res.ok) {
-      window.alert(json.error);
+    if (!ok || !data) {
+      window.alert(error);
       return;
     }
-    setCharacters((prev) => [...prev, json.character]);
+    setCharacters((prev) => [...prev, data.character]);
     setName("");
     setDescription("");
     setFiles(null);

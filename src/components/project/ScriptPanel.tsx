@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImportMenu } from "./ImportMenu";
 import { TEXT_PROVIDER_LABEL, type TextProviderId } from "@/lib/ai/text-types";
+import { fetchJson } from "@/lib/fetch-json";
 
 export function ScriptPanel({
   scriptId,
@@ -40,15 +41,14 @@ export function ScriptPanel({
   async function save() {
     setSaving(true);
     setError(null);
-    const res = await fetch(`/api/scripts/${scriptId}`, {
+    const { ok, error: err } = await fetchJson(`/api/scripts/${scriptId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),
     });
     setSaving(false);
-    if (!res.ok) {
-      const json = await res.json();
-      setError(json.error);
+    if (!ok) {
+      setError(err);
       return;
     }
     setSavedAt(new Date());
@@ -56,23 +56,22 @@ export function ScriptPanel({
 
   async function runBreakdown() {
     if (hasScenes) {
-      const ok = window.confirm(
+      const confirmed = window.confirm(
         "Это заменит текущую раскадровку (сцены, кадры, сгенерированные изображения и комментарии к ним будут удалены). Продолжить?"
       );
-      if (!ok) return;
+      if (!confirmed) return;
     }
     setBreaking(true);
     setError(null);
     await save();
-    const res = await fetch(`/api/projects/${projectId}/breakdown`, {
+    const { ok, error: err } = await fetchJson(`/api/projects/${projectId}/breakdown`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ provider }),
     });
     setBreaking(false);
-    if (!res.ok) {
-      const json = await res.json();
-      setError(json.error);
+    if (!ok) {
+      setError(err);
       return;
     }
     router.refresh();

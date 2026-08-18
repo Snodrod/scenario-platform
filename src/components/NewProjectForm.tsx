@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { fetchJson } from "@/lib/fetch-json";
 
 export function NewProjectForm() {
   const router = useRouter();
@@ -16,20 +17,19 @@ export function NewProjectForm() {
     setSubmitting(true);
     setError(null);
 
-    const res = await fetch("/api/projects", {
+    const { ok, data, error } = await fetchJson<{ project: { id: string } }>("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, format }),
     });
-    const json = await res.json();
 
-    if (!res.ok) {
-      setError(json.error ?? "Не удалось создать проект");
+    if (!ok || !data) {
+      setError(error ?? "Не удалось создать проект");
       setSubmitting(false);
       return;
     }
 
-    router.push(`/project/${json.project.id}`);
+    router.push(`/project/${data.project.id}`);
   }
 
   if (!open) {
