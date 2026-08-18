@@ -4,6 +4,7 @@ import { Header } from "@/components/Header";
 import { ProjectWorkspace } from "@/components/project/ProjectWorkspace";
 import type { SceneWithShots } from "@/lib/types";
 import { resolveProjectRole } from "@/lib/project-access";
+import { isGoogleDriveConfigured } from "@/lib/google/oauth";
 
 export default async function ProjectPage(props: PageProps<"/project/[id]">) {
   const { id } = await props.params;
@@ -57,6 +58,16 @@ export default async function ProjectPage(props: PageProps<"/project/[id]">) {
     email: (m.profiles as { email: string | null } | null)?.email ?? null,
   }));
 
+  let driveConnected = false;
+  if (user) {
+    const { data: googleAccount } = await supabase
+      .from("google_accounts")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    driveConnected = Boolean(googleAccount);
+  }
+
   return (
     <>
       <Header email={user?.email} />
@@ -68,6 +79,8 @@ export default async function ProjectPage(props: PageProps<"/project/[id]">) {
         members={members}
         ownerEmail={ownerProfile?.email ?? null}
         role={role}
+        driveConfigured={isGoogleDriveConfigured()}
+        driveConnected={driveConnected}
       />
     </>
   );

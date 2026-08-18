@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ImportMenu } from "./ImportMenu";
 
 export function ScriptPanel({
   scriptId,
@@ -9,12 +10,16 @@ export function ScriptPanel({
   initialContent,
   canEdit,
   hasScenes,
+  driveConfigured,
+  driveConnected,
 }: {
   scriptId: string;
   projectId: string;
   initialContent: string;
   canEdit: boolean;
   hasScenes: boolean;
+  driveConfigured: boolean;
+  driveConnected: boolean;
 }) {
   const router = useRouter();
   const [content, setContent] = useState(initialContent);
@@ -60,8 +65,25 @@ export function ScriptPanel({
     router.refresh();
   }
 
+  function handleImport(text: string) {
+    if (content.trim() && content.trim() !== text.trim()) {
+      const ok = window.confirm("Заменить текущий текст сценария импортированным содержимым?");
+      if (!ok) return;
+    }
+    setContent(text);
+    setError(null);
+  }
+
   return (
     <div className="flex flex-col gap-3">
+      {canEdit && (
+        <ImportMenu
+          projectId={projectId}
+          driveConfigured={driveConfigured}
+          driveConnected={driveConnected}
+          onImport={handleImport}
+        />
+      )}
       <textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}

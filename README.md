@@ -78,6 +78,29 @@ npm run dev
   собственный вариант кадра. Не может: менять сценарий, утверждать кадры, приглашать людей.
 - **Экспорт в PDF** собирает финальные изображения + монтажные заметки в один файл.
 
+## Импорт сценария
+
+На вкладке «Сценарий» есть кнопка «Импортировать сценарий» с тремя способами:
+
+- **Файл (PDF/DOCX/TXT)** — работает сразу, без настройки.
+- **Ссылка на Google Doc** — работает сразу для документов с доступом «Все, у кого
+  есть ссылка», без OAuth (используется публичный export-эндпоинт Google Docs).
+- **Google Drive (выбор файла из личного диска)** — требует OAuth-приложение:
+  1. [Google Cloud Console](https://console.cloud.google.com/) → создайте проект →
+     **APIs & Services → OAuth consent screen** (тип External, добавьте себя как
+     тестового пользователя, пока приложение не проверено Google).
+  2. **APIs & Services → Library** → включите **Google Drive API**.
+  3. **APIs & Services → Credentials → Create credentials → OAuth client ID**,
+     тип **Web application**. Authorized redirect URI:
+     `{NEXT_PUBLIC_SITE_URL}/api/auth/google/callback` (для локальной разработки —
+     `http://localhost:3000/api/auth/google/callback`).
+  4. Впишите `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` в `.env.local`,
+     перезапустите `npm run dev`.
+  5. На вкладке «Google Drive» появится кнопка «Подключить Google Drive».
+
+Без пунктов 1–5 вкладка Drive просто показывает, что импорт не настроен —
+остальные два способа при этом работают полностью.
+
 ## Roadmap / точки расширения
 
 Схема и код уже спроектированы так, чтобы следующие фичи не требовали переделки:

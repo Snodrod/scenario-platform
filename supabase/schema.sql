@@ -222,6 +222,27 @@ create table if not exists comments (
 );
 
 -- ---------------------------------------------------------------------
+-- Google account link (Drive script import — see README "Google Drive
+-- import setup"). One row per user; the refresh_token is only ever read
+-- server-side (src/lib/google/oauth.ts), never sent to the browser.
+-- ---------------------------------------------------------------------
+create table if not exists google_accounts (
+  user_id uuid primary key references profiles(id) on delete cascade,
+  google_email text,
+  refresh_token text not null,
+  access_token text,
+  access_token_expires_at timestamptz,
+  connected_at timestamptz not null default now()
+);
+
+alter table google_accounts enable row level security;
+
+create policy "own google account" on google_accounts for all
+  to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+
+-- ---------------------------------------------------------------------
 -- Exports
 -- ---------------------------------------------------------------------
 create table if not exists exports (

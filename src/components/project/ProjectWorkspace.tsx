@@ -26,6 +26,8 @@ export function ProjectWorkspace({
   members,
   ownerEmail,
   role,
+  driveConfigured,
+  driveConnected,
 }: {
   project: ProjectRow;
   script: ScriptRow;
@@ -34,6 +36,8 @@ export function ProjectWorkspace({
   members: { user_id: string; role: MemberRole; email: string | null }[];
   ownerEmail: string | null;
   role: MemberRole;
+  driveConfigured: boolean;
+  driveConnected: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("script");
   const canEdit = role === "owner" || role === "co_writer";
@@ -74,6 +78,8 @@ export function ProjectWorkspace({
           initialContent={script.content}
           canEdit={canEdit}
           hasScenes={scenes.length > 0}
+          driveConfigured={driveConfigured}
+          driveConnected={driveConnected}
         />
       )}
       {tab === "storyboard" && (
