@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { MemberRole } from "@/lib/supabase/types";
 import { fetchJson } from "@/lib/fetch-json";
 
@@ -26,11 +27,12 @@ export function TeamPanel({
   initialMembers: MemberWithEmail[];
   ownerEmail: string | null;
 }) {
-  const [members, setMembers] = useState(initialMembers);
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<MemberRole>("client");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [busyMemberId, setBusyMemberId] = useState<string | null>(null);
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
@@ -46,9 +48,37 @@ export function TeamPanel({
       setMessage(`Ошибка: ${error}`);
       return;
     }
-    setMembers((prev) => [...prev, { user_id: crypto.randomUUID(), role, email }]);
     setMessage(`Приглашение отправлено на ${email}`);
     setEmail("");
+    router.refresh();
+  }
+
+  async function handleResend(member: MemberWithEmail) {
+    if (!member.email) return;
+    setBusyMemberId(member.user_id);
+    setMessage(null);
+    const { ok, error } = await fetchJson(`/api/projects/${projectId}/invite`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: member.email, role: member.role, resend: true }),
+    });
+    setBusyMemberId(null);
+    setMessage(ok ? `Приглашение отправлено повторно на ${member.email}` : `Ошибка: ${error}`);
+  }
+
+  async function handleRemove(member: MemberWithEmail) {
+    if (!window.confirm(`Убрать ${member.email ?? "этого участника"} из проекта?`)) return;
+    setBusyMemberId(member.user_id);
+    setMessage(null);
+    const { ok, error } = await fetchJson(`/api/projects/${projectId}/members/${member.user_id}`, {
+      method: "DELETE",
+    });
+    setBusyMemberId(null);
+    if (!ok) {
+      setMessage(`Ошибка: ${error}`);
+      return;
+    }
+    router.refresh();
   }
 
   return (
@@ -56,14 +86,32 @@ export function TeamPanel({
       <div>
         <h4 className="text-sm font-medium text-neutral-200 mb-2">Участники</h4>
         <ul className="flex flex-col gap-1 text-sm">
-          <li className="flex justify-between text-neutral-300">
+          <li className="flex items-center justify-between text-neutral-300 py-1">
             <span>{ownerEmail}</span>
             <span className="text-neutral-500">Владелец</span>
           </li>
-          {members.map((m) => (
-            <li key={m.user_id} className="flex justify-between text-neutral-300">
-              <span>{m.email ?? m.user_id}</span>
-              <span className="text-neutral-500">{ROLE_LABEL[m.role]}</span>
+          {initialMembers.map((m) => (
+            <li key={m.user_id} className="flex items-center justify-between text-neutral-300 py-1 gap-2">
+              <span className="truncate">{m.email ?? m.user_id}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-neutral-500">{ROLE_LABEL[m.role]}</span>
+                <button
+                  onClick={() => handleResend(m)}
+                  disabled={busyMemberId === m.user_id}
+                  className="text-xs text-neutral-400 hover:text-neutral-200 disabled:opacity-50"
+                  title="Отправить приглашение заново"
+                >
+                  ↻ Повторить
+                </button>
+                <button
+                  onClick={() => handleRemove(m)}
+                  disabled={busyMemberId === m.user_id}
+                  className="text-xs text-red-500 hover:text-red-400 disabled:opacity-50"
+                  title="Убрать из проекта"
+                >
+                  Убрать
+                </button>
+              </div>
             </li>
           ))}
         </ul>

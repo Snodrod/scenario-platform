@@ -30,7 +30,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/projects/[i
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const { email, role: inviteRole } = await request.json();
+  const { email, role: inviteRole, resend } = await request.json();
   const targetRole = ["co_writer", "client", "viewer"].includes(inviteRole) ? inviteRole : "client";
   if (!email?.trim()) return NextResponse.json({ error: "email is required" }, { status: 400 });
 
@@ -54,13 +54,31 @@ export async function POST(request: Request, ctx: RouteContext<"/api/projects/[i
 
   let userId = existingProfile?.id ?? null;
 
-  if (!userId) {
+  // Without `resend`, an existing profile just gets its membership row
+  // upserted below and no email goes out at all — fine for "add someone
+  // who's already a user of the platform", useless for "they lost the
+  // invite email, send it again". `resend` forces a fresh
+  // inviteUserByEmail call either way.
+  if (!userId || resend) {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
     const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
       redirectTo: `${siteUrl}/auth/callback?next=/project/${projectId}`,
     });
-    if (inviteError) return NextResponse.json({ error: inviteError.message }, { status: 500 });
-    userId = invited.user?.id ?? null;
+    if (inviteError) {
+      if (resend && userId) {
+        // Already-confirmed users can't be re-invited — that's not a
+        // failure, it means they already have access.
+        return NextResponse.json(
+          {
+            error:
+              "Этот пользователь уже подтвердил аккаунт — повторное приглашение не нужно, ему достаточно войти по обычной ссылке на странице входа.",
+          },
+          { status: 409 }
+        );
+      }
+      return NextResponse.json({ error: inviteError.message }, { status: 500 });
+    }
+    userId = invited.user?.id ?? userId;
   }
 
   if (!userId) {
